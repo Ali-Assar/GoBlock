@@ -14,5 +14,23 @@ message Header {
     bytes rootHash = 4; // Merkle root of txs
     int64 timestamp = 5;
 }
+message TxInput{
+    // the previous hash of the transaction containing 
+    // the output we want spend
+    bytes prevTxHash = 1;
+    // the index of the output of the pervious transaction we want to spend
+    uint32 prevOutIndex = 2;
+    bytes publickey = 3;
+    bytes signature = 4;
+}
 
-message Transaction {}
+message TxOutput{
+    int64 amount = 1;
+    int64 address = 2;
+}
+
+message Transaction {
+    int32 version = 1;
+    repeated TxInput inputs = 2;
+    repeated TxOutput outouts = 3;
+}

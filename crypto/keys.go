@@ -91,7 +91,7 @@ func (s *Signature) Bytes() []byte {
 	return s.value
 }
 
-func (s *Signature) verify(pubKey *PublicKey, msg []byte) bool {
+func (s *Signature) Verify(pubKey *PublicKey, msg []byte) bool {
 	return ed25519.Verify(pubKey.Key, msg, s.value)
 }
 

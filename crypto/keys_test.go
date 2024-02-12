@@ -37,15 +37,15 @@ func TestPrivateKeySign(t *testing.T) {
 	msg := []byte("foo bar baz")
 
 	sig := privKey.Sign(msg)
-	assert.True(t, sig.verify(PubKey, msg))
+	assert.True(t, sig.Verify(PubKey, msg))
 
 	//Test with invalid massage
-	assert.False(t, sig.verify(PubKey, []byte("foo")))
+	assert.False(t, sig.Verify(PubKey, []byte("foo")))
 
 	//Test with invalid pub key
 	invalidPrivKey := GeneratePrivateKey()
 	invalidPubKey := invalidPrivKey.Public()
-	assert.False(t, sig.verify(invalidPubKey, msg))
+	assert.False(t, sig.Verify(invalidPubKey, msg))
 }
 
 func TestPublicKeyToAddress(t *testing.T) {
