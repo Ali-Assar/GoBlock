@@ -1,12 +1,12 @@
 package types
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/Ali-Assar/GoBlock/crypto"
 	"github.com/Ali-Assar/GoBlock/proto"
 	"github.com/Ali-Assar/GoBlock/util"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewTransaction(t *testing.T) {
@@ -39,6 +39,6 @@ func TestNewTransaction(t *testing.T) {
 	sig := SignTransaction(fromPrivKey, tx)
 	input.Signature = sig.Bytes()
 
-	fmt.Printf("%+v\n", tx)
+	assert.True(t, VerifyTransaction(tx))
 
 }
