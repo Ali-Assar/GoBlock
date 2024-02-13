@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"time"
 
 	"github.com/Ali-Assar/GoBlock/node"
 	"github.com/Ali-Assar/GoBlock/proto"
@@ -11,21 +10,27 @@ import (
 )
 
 func main() {
-	node := node.NewNode()
+	makeNode(":3000", []string{})
+	makeNode(":4000", []string{":3000"})
 
-	go func() {
-		for {
-			time.Sleep(2 * time.Second)
-			makeTransaction()
-		}
-	}()
-	log.Fatal(node.Start(":3000"))
-
+	// go func() {
+	// 	for {
+	// 		time.Sleep(2 * time.Second)
+	// 		makeTransaction()
+	// 	}
+	// }()
+	select {}
 }
 
 func makeNode(listenAddr string, bootstrapNodes []string) *node.Node {
 	n := node.NewNode()
 	go n.Start(listenAddr)
+	if len(bootstrapNodes) > 0 {
+		if err := n.BootStrapNetwork(bootstrapNodes); err != nil {
+			log.Fatal(err)
+		}
+	}
+	return n
 }
 
 func makeTransaction() {
