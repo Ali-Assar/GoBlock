@@ -34,7 +34,6 @@ func main() {
 }
 
 func makeTransaction() {
-	fmt.Println("-------")
 	client, err := grpc.Dial(":3000", grpc.WithInsecure())
 	if err != nil {
 		log.Fatal(err)
@@ -42,10 +41,11 @@ func makeTransaction() {
 
 	c := proto.NewNodeClient(client)
 
-	tx := &proto.Transaction{
-		Version: 1,
+	version := &proto.Version{
+		Version: "goBlock-0.1",
+		Height:  1,
 	}
-	_, err = c.HandleTransaction(context.TODO(), tx)
+	_, err = c.Handshake(context.TODO(), version)
 	if err != nil {
 		log.Fatal(err)
 	}
