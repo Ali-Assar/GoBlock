@@ -1,3 +1,4 @@
+//PATH="${PATH}:${HOME}/go/bin"
 syntax = "proto3";
 
 option go_package = "github.com/Ali-Assar/GoBlock/proto";
@@ -10,6 +11,7 @@ service Node {
 message Version{
     string version = 1;
     int32 height = 2;
+    string listenAddr = 3;
 }
 
 message Ack { }

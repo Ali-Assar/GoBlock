@@ -3,7 +3,7 @@ build:
 	@go build -o bin/goblock
 
 run: build
-	@./bin/docker
+	@./bin/goblock
 
 test:
 	@go test -v ./...

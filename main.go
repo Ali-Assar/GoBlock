@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"net"
 	"time"
 
 	"github.com/Ali-Assar/GoBlock/node"
@@ -14,15 +12,6 @@ import (
 
 func main() {
 	node := node.NewNode()
-	opts := []grpc.ServerOption{}
-	grpcServer := grpc.NewServer(opts...)
-	ln, err := net.Listen("tcp", ":3000")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	proto.RegisterNodeServer(grpcServer, node)
-	fmt.Println("node running on port: ", "3000")
 
 	go func() {
 		for {
@@ -30,7 +19,13 @@ func main() {
 			makeTransaction()
 		}
 	}()
-	grpcServer.Serve(ln)
+	log.Fatal(node.Start(":3000"))
+
+}
+
+func makeNode(listenAddr string, bootstrapNodes []string) *node.Node {
+	n := node.NewNode()
+	go n.Start(listenAddr)
 }
 
 func makeTransaction() {
@@ -42,8 +37,9 @@ func makeTransaction() {
 	c := proto.NewNodeClient(client)
 
 	version := &proto.Version{
-		Version: "goBlock-0.1",
-		Height:  1,
+		Version:    "goBlock-0.1",
+		Height:     1,
+		ListenAddr: ":4000",
 	}
 	_, err = c.Handshake(context.TODO(), version)
 	if err != nil {
