@@ -35,53 +35,7 @@ func NewNode() *Node {
 	}
 }
 
-func (n *Node) addPeer(c proto.NodeClient, v *proto.Version) {
-	n.peerLock.Lock()
-	defer n.peerLock.Unlock()
-
-	//The logic where we decide to accept or drop
-	//the incoming node connection.
-
-	n.peers[c] = v
-
-	for _, addr := range v.PeerList {
-		if addr != n.listenAddr {
-			fmt.Printf("[%s] need to connect with %s\n", n.listenAddr, addr)
-		}
-	}
-
-	n.logger.Debugw("new peer successfully connected",
-		"localNode", n.listenAddr,
-		"remoteNode", v.ListenAddr,
-		"height", v.Height)
-
-}
-
-func (n *Node) removePeer(c proto.NodeClient) {
-	n.peerLock.Lock()
-	defer n.peerLock.Unlock()
-	delete(n.peers, c)
-}
-
-func (n *Node) BootStrapNetwork(addrs []string) error {
-	for _, addr := range addrs {
-		c, err := makeNodeClient(addr)
-		if err != nil {
-			return err
-		}
-
-		v, err := c.Handshake(context.Background(), n.getVersion())
-		if err != nil {
-			n.logger.Errorln("handshake error:", err)
-			continue
-		}
-
-		n.addPeer(c, v)
-	}
-	return nil
-}
-
-func (n *Node) Start(listenAddr string) error {
+func (n *Node) Start(listenAddr string, bootstrapNodes []string) error {
 	n.listenAddr = listenAddr
 
 	var (
@@ -97,6 +51,12 @@ func (n *Node) Start(listenAddr string) error {
 	proto.RegisterNodeServer(grpcServer, n)
 	fmt.Println("node running on port ", listenAddr)
 	n.logger.Infow("node started", "port", n.listenAddr)
+
+	// bootstrap the network with a list of already known nodes in the networks
+	if len(bootstrapNodes) > 0 {
+		go n.bootStrapNetwork(bootstrapNodes)
+	}
+
 	return grpcServer.Serve(ln)
 }
 
@@ -117,6 +77,61 @@ func (n *Node) HandleTransaction(ctx context.Context, tx *proto.Transaction) (*p
 	return &proto.Ack{}, nil
 }
 
+func (n *Node) addPeer(c proto.NodeClient, v *proto.Version) {
+	n.peerLock.Lock()
+	defer n.peerLock.Unlock()
+
+	//The logic where we decide to accept or drop
+	//the incoming node connection.
+
+	n.peers[c] = v
+
+	//Connect to all peers in the received List of peers
+	if len(v.PeerList) > 0 {
+		go n.bootStrapNetwork(v.PeerList)
+	}
+	n.logger.Debugw("new peer successfully connected",
+		"localNode", n.listenAddr,
+		"remoteNode", v.ListenAddr,
+		"height", v.Height)
+
+}
+
+func (n *Node) removePeer(c proto.NodeClient) {
+	n.peerLock.Lock()
+	defer n.peerLock.Unlock()
+	delete(n.peers, c)
+}
+
+func (n *Node) bootStrapNetwork(addrs []string) error {
+	for _, addr := range addrs {
+		if !n.canConnectWith(addr) {
+			continue
+		}
+
+		n.logger.Debugw("dialing remote node", "local", n.listenAddr, "remote", addr)
+		c, v, err := n.dialRemoteNode(addr)
+		if err != nil {
+			return err
+		}
+		n.addPeer(c, v)
+	}
+	return nil
+}
+
+func (n *Node) dialRemoteNode(addr string) (proto.NodeClient, *proto.Version, error) {
+	c, err := makeNodeClient(addr)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	v, err := c.Handshake(context.Background(), n.getVersion())
+	if err != nil {
+		return nil, nil, err
+	}
+	return c, v, nil
+}
+
 func (n *Node) getVersion() *proto.Version {
 	return &proto.Version{
 		Version:    "goBlock-0.1",
@@ -124,6 +139,20 @@ func (n *Node) getVersion() *proto.Version {
 		ListenAddr: n.listenAddr,
 		PeerList:   n.getPeerList(),
 	}
+}
+
+func (n *Node) canConnectWith(addr string) bool {
+	if n.listenAddr == addr {
+		return false
+	}
+
+	connectedPeers := n.getPeerList()
+	for _, connectedAddr := range connectedPeers {
+		if addr == connectedAddr {
+			return false
+		}
+	}
+	return true
 }
 
 func (n *Node) getPeerList() []string {
