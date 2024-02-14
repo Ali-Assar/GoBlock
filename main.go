@@ -5,8 +5,10 @@ import (
 	"log"
 	"time"
 
+	"github.com/Ali-Assar/GoBlock/crypto"
 	"github.com/Ali-Assar/GoBlock/node"
 	"github.com/Ali-Assar/GoBlock/proto"
+	"github.com/Ali-Assar/GoBlock/util"
 	"google.golang.org/grpc"
 )
 
@@ -14,8 +16,11 @@ func main() {
 	makeNode(":3000", []string{})
 	time.Sleep(time.Second)
 	makeNode(":4000", []string{":3000"})
-	time.Sleep(4 * time.Second)
+	time.Sleep(time.Second)
 	makeNode(":5000", []string{":4000"})
+
+	time.Sleep(time.Second)
+	makeTransaction()
 
 	select {}
 }
@@ -33,13 +38,24 @@ func makeTransaction() {
 	}
 
 	c := proto.NewNodeClient(client)
-
-	version := &proto.Version{
-		Version:    "goBlock-0.1",
-		Height:     1,
-		ListenAddr: ":4000",
+	privKey := crypto.GeneratePrivateKey()
+	tx := &proto.Transaction{
+		Version: 1,
+		Inputs: []*proto.TxInput{
+			{
+				PrevTxHash:   util.RandomHash(),
+				PrevOutIndex: 0,
+				PublicKey:    privKey.Public().Address().Bytes(),
+			},
+		},
+		Outputs: []*proto.TxOutput{
+			{
+				Amount:  99,
+				Address: privKey.Public().Bytes(),
+			},
+		},
 	}
-	_, err = c.Handshake(context.TODO(), version)
+	_, err = c.HandleTransaction(context.TODO(), tx)
 	if err != nil {
 		log.Fatal(err)
 	}
