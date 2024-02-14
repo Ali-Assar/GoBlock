@@ -6,6 +6,22 @@ import (
 	"github.com/Ali-Assar/GoBlock/proto"
 )
 
+type HeaderList struct {
+	headers []*proto.Header
+}
+
+func (list *HeaderList) Add(h *proto.Header) {
+	list.headers = append(list.headers, h)
+}
+
+func (list *HeaderList) Height() int {
+	return list.Len() - 1
+}
+
+func (list *HeaderList) Len() int {
+	return len(list.headers)
+}
+
 type Chain struct {
 	BlockStore BlockStorer
 }
