@@ -9,6 +9,42 @@ import (
 	"github.com/Ali-Assar/GoBlock/types"
 )
 
+type TXStorer interface {
+	Put(*proto.Transaction) error
+	Get(string) (*proto.Transaction, error)
+}
+
+type MemoryTxStore struct {
+	lock sync.RWMutex
+	txx  map[string]*proto.Transaction
+}
+
+func NewMemoryTxStore() *MemoryTxStore {
+	return &MemoryTxStore{
+		txx: make(map[string]*proto.Transaction),
+	}
+}
+
+func (s *MemoryTxStore) Get(hash string) (*proto.Transaction, error) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	tx, ok := s.txx[hash]
+	if !ok {
+		return nil, fmt.Errorf("could not find the transaction with hash: %s", hash)
+	}
+
+	return tx, nil
+}
+
+func (s *MemoryTxStore) Put(tx *proto.Transaction) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	hash := hex.EncodeToString(types.HashTransaction(tx))
+	s.txx[hash] = tx
+	return nil
+}
+
 type BlockStorer interface {
 	Put(*proto.Block) error
 	Get(string) (*proto.Block, error)

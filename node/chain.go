@@ -10,6 +10,8 @@ import (
 	"github.com/Ali-Assar/GoBlock/types"
 )
 
+const godSeed = "6f83b444bb6504eafa04e54d804fde69c19e520b9d961deba1062f811130e443"
+
 type HeaderList struct {
 	headers []*proto.Header
 }
@@ -40,13 +42,15 @@ func (list *HeaderList) Len() int {
 }
 
 type Chain struct {
+	txStore    TXStorer
 	BlockStore BlockStorer
 	headers    *HeaderList
 }
 
-func NewChain(bs BlockStorer) *Chain {
+func NewChain(bs BlockStorer, txStore TXStorer) *Chain {
 	chain := &Chain{
 		BlockStore: bs,
+		txStore:    txStore,
 		headers:    NewHeaderList(),
 	}
 	chain.addBlock(createGenesisBlock())
@@ -59,6 +63,7 @@ func (c *Chain) Height() int {
 
 // add bloc without validation
 func (c *Chain) AddBlock(b *proto.Block) error {
+	// validation
 	if err := c.ValidateBlock(b); err != nil {
 		return err
 	}
@@ -69,7 +74,14 @@ func (c *Chain) AddBlock(b *proto.Block) error {
 func (c *Chain) addBlock(b *proto.Block) error {
 	// Add the header to the list of headers
 	c.headers.Add(b.Header)
-	// validation
+
+	for _, tx := range b.Transactions {
+		fmt.Println("New tx: ", hex.EncodeToString(types.HashTransaction(tx)))
+		if err := c.txStore.Put(tx); err != nil {
+			return err
+		}
+	}
+
 	return c.BlockStore.Put(b)
 }
 
@@ -107,12 +119,25 @@ func (c *Chain) ValidateBlock(b *proto.Block) error {
 }
 
 func createGenesisBlock() *proto.Block {
-	privKey := crypto.GeneratePrivateKey()
+	privKey := crypto.NewPrivateKeyFromSeedString(godSeed)
 	block := &proto.Block{
 		Header: &proto.Header{
 			Version: 1,
 		},
 	}
+
+	tx := &proto.Transaction{
+		Version: 1,
+		Inputs:  []*proto.TxInput{},
+		Outputs: []*proto.TxOutput{
+			{
+				Amount:  1000,
+				Address: privKey.Public().Address().Bytes(),
+			},
+		},
+	}
+	block.Transactions = append(block.Transactions, tx)
 	types.SignBlock(privKey, block)
+
 	return block
 }
