@@ -6,9 +6,24 @@ import (
 	"testing"
 
 	"github.com/Ali-Assar/GoBlock/crypto"
+	"github.com/Ali-Assar/GoBlock/proto"
 	"github.com/Ali-Assar/GoBlock/util"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestCalculateRootHash(t *testing.T) {
+	privKey := crypto.GeneratePrivateKey()
+	block := util.RandomBlock()
+	tx := &proto.Transaction{
+		Version: 1,
+	}
+	block.Transactions = append(block.Transactions, tx)
+	SignBlock(privKey, block)
+
+	assert.True(t, VerifyRootHash(block))
+	assert.Equal(t, 32, len(block.Header.RootHash))
+
+}
 
 func TestSignVerifyBlock(t *testing.T) {
 	var (
