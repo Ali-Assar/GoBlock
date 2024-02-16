@@ -10,7 +10,7 @@ import (
 )
 
 type UTXOStorer interface {
-	Put(string, *UTXO) error
+	Put(*UTXO) error
 	Get(string) (*UTXO, error)
 }
 
@@ -37,10 +37,11 @@ func (s *MemoryUTXOStore) Get(hash string) (*UTXO, error) {
 	return utxo, nil
 }
 
-func (s *MemoryUTXOStore) Put(key string, utxo *UTXO) error {
+func (s *MemoryUTXOStore) Put(utxo *UTXO) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
+	key := fmt.Sprintf("%s_%d", utxo.Hash, utxo.OutIndex)
 	s.data[key] = utxo
 	return nil
 }
@@ -76,6 +77,7 @@ func (s *MemoryTxStore) Get(hash string) (*proto.Transaction, error) {
 func (s *MemoryTxStore) Put(tx *proto.Transaction) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+
 	hash := hex.EncodeToString(types.HashTransaction(tx))
 	s.txx[hash] = tx
 	return nil
