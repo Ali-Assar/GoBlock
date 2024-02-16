@@ -137,11 +137,47 @@ func (c *Chain) ValidateBlock(b *proto.Block) error {
 	}
 
 	for _, tx := range b.Transactions {
-		if !types.VerifyTransaction(tx) {
-			return fmt.Errorf("invalid tx signature")
+		if err := c.ValidateTransaction(tx); err != nil {
+			return err
+		}
+
+	}
+	return nil
+}
+
+func (c *Chain) ValidateTransaction(tx *proto.Transaction) error {
+	//verify the signature
+	if !types.VerifyTransaction(tx) {
+		return fmt.Errorf("invalid tx signature")
+	}
+	// check whether all the outputs are unspent
+	nInputs := len(tx.Inputs)
+	hash := types.HashTransaction(tx)
+
+	sumInputs := 0
+	for i := 0; i < nInputs; i++ {
+		var (
+			PrevTxHash = hex.EncodeToString(tx.Inputs[i].PrevTxHash)
+			key        = fmt.Sprintf("%s_%d", PrevTxHash, i)
+		)
+		utxo, err := c.utxoStore.Get(key)
+		if err != nil {
+			return err
+		}
+		sumInputs += int(utxo.Amount)
+		if utxo.Spent {
+			return fmt.Errorf("input %d of tx %s is already spent", i, hash)
 		}
 	}
 
+	sumOutputs := 0
+	for _, output := range tx.Outputs {
+		sumOutputs += int(output.Amount)
+	}
+
+	if sumInputs < sumOutputs {
+		return fmt.Errorf("insufficient balance got: %d spending: %d", sumInputs, sumOutputs)
+	}
 	return nil
 }
 
